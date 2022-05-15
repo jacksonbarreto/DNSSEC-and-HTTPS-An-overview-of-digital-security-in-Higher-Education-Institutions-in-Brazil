@@ -45,7 +45,7 @@ class MyTestCase(unittest.TestCase):
             self.assertEqual(certificate_valid, True)
 
     def test_certificate_valid_for_multiples_subdomain(self):
-        hosts = ['https://ages.edu.br/', 'https://www.uninassau.edu.br/institucional/caruaru/',
+        hosts = ['https://www.uninassau.edu.br/institucional/caruaru/',
                  'https://portal.estacio.br/unidades/centro-universit%C3%A1rio-est%C3%A1cio-do-recife/',
                  'https://ages.edu.br/']
         for host in hosts:

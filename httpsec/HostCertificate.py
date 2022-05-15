@@ -112,28 +112,26 @@ class HostCertificate:
         self.__is_valid_common_name__()
 
     def __verify_common_name__(self):
-        if self.__subject is not None:
-            hostname = self.__url_hostname.replace("www.", "")
-            subject = self.__subject.replace("www.", "")
-            if ("*." in subject and subject.count("*") == 1 and
-                    subject.count(".") > 1 and "." in hostname):
-                left_expected, right_expected = subject.split("*.")
-                left_hostname, right_hostname = hostname.split(".", 1)
-                if (left_hostname.startswith(left_expected) and
-                        right_expected == right_hostname):
-                    return True
-                if subject.replace("*.", "") == hostname:
-                    return True
-            elif subject == hostname:
+        hostname = self.__url_hostname.replace("www.", "")
+        subject = self.__subject.replace("www.", "")
+        if ("*." in subject and subject.count("*") == 1 and
+                subject.count(".") > 1 and "." in hostname):
+            left_expected, right_expected = subject.split("*.")
+            left_hostname, right_hostname = hostname.split(".", 1)
+            if (left_hostname.startswith(left_expected) and
+                    right_expected == right_hostname):
                 return True
-            else:
-                return False
+            if subject.replace("*.", "") == hostname:
+                return True
+        elif subject == hostname:
+            return True
         else:
-            self.__errors.append('common_name_invalid')
+            return False
 
     def __is_valid_common_name__(self):
-        if not self.__verify_common_name__():
-            self.__errors.append('common_name_invalid')
+        if self.__subject is not None:
+            if not self.__verify_common_name__():
+                self.__errors.append('common_name_invalid')
 
     def __is_valid_certificate__(self):
         if len(self.__errors) != 0:
