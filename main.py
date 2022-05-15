@@ -1,8 +1,9 @@
 from httpsec.HostCertificate import HostCertificate
 
 if __name__ == '__main__':
-    hosts = ['https://www.fva.com.br/', 'ipp.pt', 'itau.com.br', 'ind.millenniumbcp.pt',
-             'https://www.uninassau.edu.br/institucional/caruaru/',
+    hosts = ['https://www.fva.com.br/','https://www.uninassau.edu.br/institucional/caruaru/',
+             'ipp.pt', 'itau.com.br', 'ind.millenniumbcp.pt',
+
              'https://portal.estacio.br/unidades/centro-universit%C3%A1rio-est%C3%A1cio-do-recife/',
              'https://ecc256.badssl.com/',
              'https://tls-v1-0.badssl.com/',
