@@ -10,8 +10,7 @@ from tldextract import extract
 
 
 class HostCertificate:
-    def __init__(self, url_draw, port_number=443):
-        self.__port_number = port_number
+    def __init__(self, url_draw):
         self.__is_defined_certificate_information = False
         self.__errors = []
         self.__start_url__(url_draw)
@@ -19,7 +18,7 @@ class HostCertificate:
     def collect_certificate_information(self):
         hostname_idna = idna.encode(self.__url_hostname)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect((self.__url_hostname, self.__port_number))
+        sock.connect((self.__url_hostname, 443))
         peer_name = sock.getpeername()[0]
         ctx = SSL.Context(SSL.SSLv23_METHOD)
         ctx.check_hostname = False
