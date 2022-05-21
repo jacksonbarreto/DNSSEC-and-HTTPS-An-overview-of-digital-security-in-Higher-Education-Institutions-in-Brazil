@@ -2,7 +2,7 @@ from dnssec.DNSSecValidator import DNSSecValidator
 from httpsec.HostCertificate import HostCertificate
 
 if __name__ == '__main__':
-    hosts = ["www.dnssec-failed.org",
+    hosts = ["www.dnssec-failed.org", 'ulisboa.pt',
         'https://www.fva.com.br/','https://www.uninassau.edu.br/institucional/caruaru/',
              'ipp.pt', 'itau.com.br', 'ind.millenniumbcp.pt',
              'metebalci.com', 'fccn.pt',

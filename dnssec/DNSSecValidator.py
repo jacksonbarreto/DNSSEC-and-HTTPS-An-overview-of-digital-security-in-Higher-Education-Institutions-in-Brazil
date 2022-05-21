@@ -85,5 +85,5 @@ class DNSSecValidator:
             a_sec = r_sec.answer
             dns.dnssec.validate(a_sec[0], a_sec[1], {q_name: a_sec[0]})
             return True
-        except dns.dnssec.ValidationFailure:
+        except Exception:
             return False
