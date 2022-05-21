@@ -49,7 +49,7 @@ class DNSSecValidator:
     def __get_resolver__(nameserver='8.8.8.8'):
         resolver = dns.resolver.Resolver()
         resolver.nameservers = ([nameserver])
-        resolver.lifetime = 9.999
+        #resolver.lifetime = 9.999
         resolver.use_edns(0, dns.flags.CD | dns.flags.DO | dns.flags.RD, 4096)
         return resolver
 

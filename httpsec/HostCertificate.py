@@ -18,37 +18,43 @@ class HostCertificate:
         self.__crypto_certificate = None
         self.__forced_redirect_to_https = False
         self.__https_redirect_to_same_domain = False
+        self.__protocol_version_name = None
+        self.__certificate_version = None
+        self.__algorithm_name = None
+        self.__issuer = None
+        self.__subject = None
+        self.__is_valid_certificate = False
+        self.__start_certificate_validate = None
+        self.__certificate_expiration = None
+        self.__key_size = None
+        self.__has_https = False
         self.__errors = []
         self.__normalize_domain__(host)
 
-    def collect_certificate_information(self):
-        self.__connect_to_socket__()
-        self.__get_certificate__()
-        self.__close_socket_connection__()
-        self.__define_certificate_information__()
-        self.__verify_errors_in_certificate__()
-        self.__verify_forced_redirect()
-        self.__is_valid_certificate__()
+    def validator(self):
+        if self.__has_https__():
+            self.__get_certificate__()
+            self.__define_certificate_information__()
+            self.__verify_errors_in_certificate__()
+            self.__verify_forced_redirect()
 
     def get_host_certificate_information(self):
-        if self.__crypto_certificate is not None:
-            return {
-                'host_ip_address': self.__host_ip_address,
-                'protocol_version_name': self.__protocol_version_name,
-                'forced_redirect_to_https': self.__forced_redirect_to_https,
-                'https_redirect_to_same_domain': self.__https_redirect_to_same_domain,
-                'certificate_valid': self.__is_valid_certificate,
-                'certificate_version': self.__certificate_version,
-                'issuer': self.__issuer,
-                'subject': self.__subject,
-                'algorithm_name': self.__algorithm_name,
-                'key_size': self.__key_size,
-                'start_certificate_validate': self.__start_certificate_validate,
-                'certificate_expiration': self.__certificate_expiration,
-                'errors': self.__errors
-            }
-        else:
-            raise Exception('first you need to call collect_certificate_information() method')
+        return {
+            'has_https': self.__has_https,
+            'host_ip_address': self.__host_ip_address,
+            'protocol_version_name': self.__protocol_version_name,
+            'forced_redirect_to_https': self.__forced_redirect_to_https,
+            'https_redirect_to_same_domain': self.__https_redirect_to_same_domain,
+            'certificate_valid': self.__is_valid_certificate,
+            'certificate_version': self.__certificate_version,
+            'issuer': self.__issuer,
+            'subject': self.__subject,
+            'algorithm_name': self.__algorithm_name,
+            'key_size': self.__key_size,
+            'start_certificate_validate': self.__start_certificate_validate,
+            'certificate_expiration': self.__certificate_expiration,
+            'errors': self.__errors
+        }
 
     def __verify_forced_redirect(self):
         if self.__url_hostname is not None:
@@ -110,6 +116,7 @@ class HostCertificate:
 
     def __verify_errors_in_certificate__(self):
         self.__is_valid_common_name__()
+        self.__is_valid_certificate__()
 
     def __verify_common_name__(self):
         hostname = self.__url_hostname.replace("www.", "")
@@ -140,11 +147,13 @@ class HostCertificate:
             self.__is_valid_certificate = True
 
     def __get_certificate__(self):
+        self.__connect_to_socket__()
         if self.__sock_ssl is not None:
             self.__certificate = self.__sock_ssl.get_peer_certificate()
             self.__crypto_certificate = self.__certificate.to_cryptography()
         else:
             raise Exception("don't exist a connection")
+        self.__close_socket_connection__()
 
     def __connect_to_socket__(self):
         if self.__url_hostname is not None:
@@ -167,3 +176,22 @@ class HostCertificate:
             self.__sock.close()
         else:
             raise Exception("don't exist a connection")
+
+    def __has_https__(self):
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect((self.__url_hostname, 443))
+            ctx = SSL.Context(SSL.SSLv23_METHOD)
+            ctx.check_hostname = False
+            ctx.verify_mode = SSL.VERIFY_NONE
+            sock_ssl = SSL.Connection(ctx, sock)
+            sock_ssl.set_connect_state()
+            sock_ssl.set_tlsext_host_name(idna.encode(self.__url_hostname))
+            sock_ssl.do_handshake()
+            sock_ssl.close()
+            sock.close()
+            self.__has_https = True
+            return True
+        except Exception:
+            self.__has_https = False
+            return False

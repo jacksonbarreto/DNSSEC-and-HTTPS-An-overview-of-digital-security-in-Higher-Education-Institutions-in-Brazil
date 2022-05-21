@@ -1,32 +1,114 @@
 from dnssec.DNSSecValidator import DNSSecValidator
 from httpsec.HostCertificate import HostCertificate
+import pandas as pd
 
 if __name__ == '__main__':
-    hosts = ["www.dnssec-failed.org", 'ulisboa.pt',
-        'https://www.fva.com.br/','https://www.uninassau.edu.br/institucional/caruaru/',
-             'ipp.pt', 'itau.com.br', 'ind.millenniumbcp.pt',
-             'metebalci.com', 'fccn.pt',
-             'https://portal.estacio.br/unidades/centro-universit%C3%A1rio-est%C3%A1cio-do-recife/',
-             'https://ecc256.badssl.com/',
-             'https://tls-v1-0.badssl.com/',
-             'https://tls-v1-1.badssl.com/',
-             'https://revoked.badssl.com/',
-             'https://expired.badssl.com/',
-             'https://wrong.host.badssl.com/',
-             'https://no-common-name.badssl.com/',
-             'http://esamazabaetetuba.com.br/',
-             'http://www.ccomgex.eb.mil.br/',
-             'https://www.pitagoras.com.br/unidade/faculdade-pitagoras-de-medicina-de-codo/',
-             'http://novafaculdadedegoiana.com.br/site/',
-             'http://fest.edu.br/',
-             'http://www.faflor.com.br/',
-             'https://ages.edu.br/',
-             ]
 
-    for host in hosts:
-        # host_info = HostCertificate(host)
-        # host_info.collect_certificate_information()
-        # print(host_info.get_host_certificate_information())
-        dns_sec = DNSSecValidator(host)
-        dns_sec.validator()
-        print(dns_sec.get_information())
+    ies = pd.read_csv('./ies_with_url.csv', encoding='latin')
+    ies['nameserver'] = 'a'
+    ies['has_dnssec'] = 'a'
+    ies['dnssec_is_valid'] = 'a'
+    ies['algorithm_name'] = 'a'
+    ies['has_https'] = 'a'
+
+    ies['forced_redirect_to_https'] = 'a'
+    ies['https_redirect_to_same_domain'] = 'a'
+    ies['https_protocol_version_name'] = 'a'
+    ies['https_certificate_valid'] = 'a'
+    ies['https_certificate_version'] = 'a'
+    ies['issuer'] = 'a'
+    ies['subject'] = 'a'
+    ies['https_algorithm_name'] = 'a'
+    ies['https_key_size'] = 'a'
+    ies['https_start_certificate_validate'] = 'a'
+    ies['https_certificate_expiration'] = 'a'
+
+    dnssec_results = []
+    nameserver = []
+    has_dnssec = []
+    dnssec_is_valid = []
+    dnssec_algorithm_name = []
+
+    forced_redirect_to_https = []
+    https_redirect_to_same_domain = []
+    https_protocol_version_name = []
+    certificate_valid = []
+    certificate_version = []
+    issuer = []
+    subject = []
+    https_algorithm_name = []
+    https_key_size = []
+    https_start_certificate_validate = []
+    https_certificate_expiration = []
+    has_https = []
+
+    for row in ies.itertuples():
+        print("analyzing record ", getattr(row, 'Index'), "/", len(ies))
+        if len(str(row.url)) > 3:
+            dns_sec = DNSSecValidator(row.url)
+            dns_sec.validator()
+            dns_sec_info = dns_sec.get_information()
+            row_nameserver = dns_sec_info['nameserver']
+            row_has_dnssec = dns_sec_info['has_dnssec']
+            row_dnssec_is_valid = dns_sec_info['dnssec_is_valid']
+            row_algorithm_name = dns_sec_info['algorithm_name']
+
+            hostCertificate = HostCertificate(row.url)
+            hostCertificate.validator()
+            host_info = hostCertificate.get_host_certificate_information()
+
+            has_https = host_info['has_https']
+            row_forced_redirect_to_https = host_info['forced_redirect_to_https']
+            row_https_redirect_to_same_domain = host_info['https_redirect_to_same_domain']
+            row_https_protocol_version_name = host_info['protocol_version_name']
+            row_certificate_valid = host_info['certificate_valid']
+            row_certificate_version = host_info['certificate_version']
+            row_issuer = host_info['issuer']
+            row_subject = host_info['subject']
+            row_https_algorithm_name = host_info['algorithm_name']
+            row_https_key_size = host_info['key_size']
+            row_https_start_certificate_validate = host_info['start_certificate_validate']
+            row_https_certificate_expiration = host_info['certificate_expiration']
+
+        else:
+            row_nameserver = ""
+            row_has_dnssec = ""
+            row_dnssec_is_valid = ""
+            row_algorithm_name = ""
+
+            has_https = ""
+            row_forced_redirect_to_https = ""
+            row_https_redirect_to_same_domain = ""
+            row_https_protocol_version_name = ""
+            row_certificate_valid = ""
+            row_certificate_version = ""
+            row_issuer = ""
+            row_subject = ""
+            row_https_algorithm_name = ""
+            row_https_key_size = ""
+            row_https_start_certificate_validate = ""
+            row_https_certificate_expiration = ""
+
+        nameserver.append(row_nameserver)
+        has_dnssec.append(row_has_dnssec)
+        dnssec_is_valid.append(row_dnssec_is_valid)
+        dnssec_algorithm_name.append(row_algorithm_name)
+
+    ies['nameserver'] = nameserver
+    ies['has_dnssec'] = has_dnssec
+    ies['dnssec_is_valid'] = dnssec_is_valid
+    ies['algorithm_name'] = dnssec_algorithm_name
+    ies['forced_redirect_to_https'] = forced_redirect_to_https
+    ies['https_redirect_to_same_domain'] = https_redirect_to_same_domain
+    ies['https_protocol_version_name'] = https_protocol_version_name
+    ies['https_certificate_valid'] = certificate_valid
+    ies['https_certificate_version'] = certificate_version
+    ies['issuer'] = issuer
+    ies['subject'] = subject
+    ies['https_algorithm_name'] = https_algorithm_name
+    ies['https_key_size'] = https_key_size
+    ies['https_start_certificate_validate'] = https_start_certificate_validate
+    ies['https_certificate_expiration'] = https_certificate_expiration
+    ies['has_https'] = has_https
+
+    ies.to_csv('ies_with_sec_info.csv', encoding='utf-8', index=False)
