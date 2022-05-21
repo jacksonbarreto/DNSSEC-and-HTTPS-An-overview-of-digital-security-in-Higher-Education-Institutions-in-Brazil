@@ -3,8 +3,9 @@ from tldextract import extract
 
 
 class DNSSecValidator:
-    def __init__(self, host):
-        self.__domain = self.__get_domain__(host)
+    def __init__(self, uri):
+        self.__domain = None
+        self.__get_domain__(uri)
         self.__nameserver = None
         self.__ns_ip_address = None
         self.__sec_answer = None
@@ -21,19 +22,22 @@ class DNSSecValidator:
                 self.__dnssec_is_valid = True
                 self.__set_algorithm_name__()
 
-    def __get_domain__(self, url_raw):
-        _, td_location, tsu_location = extract(url_raw)
+    def __get_domain__(self, domain_name_raw):
+        _, td_location, tsu_location = extract(domain_name_raw)
         domain = f"{td_location}.{tsu_location}"
-        return domain
+        self.__domain = domain
 
     def __get_ns(self):
         if self.__domain is not None:
-            self.__nameserver = \
-                self.__get_resolver__().resolve(self.__domain, dns.rdatatype.NS, raise_on_no_answer=False).rrset[
-                    0].to_text()
-            self.__ns_ip_address = \
-                self.__get_resolver__().resolve(self.__nameserver, dns.rdatatype.A, raise_on_no_answer=False).rrset[
-                    0].to_text()
+            try:
+                self.__nameserver = \
+                    self.__get_resolver__().resolve(self.__domain, dns.rdatatype.NS, raise_on_no_answer=False).rrset[
+                        0].to_text()
+                self.__ns_ip_address = \
+                    self.__get_resolver__().resolve(self.__nameserver, dns.rdatatype.A, raise_on_no_answer=False).rrset[
+                        0].to_text()
+            except Exception:
+                return
 
     def __set_algorithm_name__(self):
         if self.__sec_answer is not None:
@@ -41,15 +45,18 @@ class DNSSecValidator:
             algorithm_code = dns_key_text.split(" ")[2]
             self.__algorithm_name = dns.dnssec.algorithm_from_text(algorithm_code).name
 
-    def __get_resolver__(self, nameserver='8.8.8.8'):
+    @staticmethod
+    def __get_resolver__(nameserver='8.8.8.8'):
         resolver = dns.resolver.Resolver()
         resolver.nameservers = ([nameserver])
-        resolver.use_edns(0, dns.flags.DO, 4096)
+        resolver.lifetime = 9.999
+        resolver.use_edns(0, dns.flags.CD | dns.flags.DO | dns.flags.RD, 4096)
         return resolver
 
     def get_information(self):
         return {
-            "hostname": self.__domain,
+            "domain": self.__domain,
+            "nameserver": self.__nameserver,
             "has_dnssec": self.__has_dnssec,
             "dnssec_is_valid": self.__dnssec_is_valid,
             "algorithm_name": self.__algorithm_name
@@ -57,11 +64,15 @@ class DNSSecValidator:
 
     def __has_dnssec__(self):
         if self.__domain is not None:
-            self.__sec_answer = self.__get_resolver__().resolve(self.__domain, dns.rdatatype.DNSKEY,
-                                                                raise_on_no_answer=False)
-            if len(self.__sec_answer) == 2:
-                return True
-            else:
+            try:
+                self.__sec_answer = self.__get_resolver__(self.__ns_ip_address).resolve(self.__domain,
+                                                                                        dns.rdatatype.DNSKEY,
+                                                                                        raise_on_no_answer=False)
+                if len(self.__sec_answer) == 2:
+                    return True
+                else:
+                    return False
+            except Exception:
                 return False
 
     def __dnssec_is_valid__(self):
