@@ -9,10 +9,9 @@ from cryptography.x509.oid import NameOID
 from tldextract import extract
 
 
-class HostCertificate:
+class HTTPSInspector:
     def __init__(self, host):
         self.__host_ip_address = None
-        self.__sock_ssl = None
         self.__sock_ssl = None
         self.__certificate = None
         self.__crypto_certificate = None
@@ -33,10 +32,13 @@ class HostCertificate:
 
     def validator(self):
         if self.__has_https__():
+            self.__has_https = True
             self.__get_certificate__()
             self.__define_certificate_information__()
             self.__verify_errors_in_certificate__()
             self.__verify_forced_redirect()
+        else:
+            self.__has_https = False
 
     def get_host_certificate_information(self):
         return {
@@ -178,20 +180,13 @@ class HostCertificate:
             raise Exception("don't exist a connection")
 
     def __has_https__(self):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(3)
         try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.connect((self.__url_hostname, 443))
-            ctx = SSL.Context(SSL.SSLv23_METHOD)
-            ctx.check_hostname = False
-            ctx.verify_mode = SSL.VERIFY_NONE
-            sock_ssl = SSL.Connection(ctx, sock)
-            sock_ssl.set_connect_state()
-            sock_ssl.set_tlsext_host_name(idna.encode(self.__url_hostname))
-            sock_ssl.do_handshake()
-            sock_ssl.close()
-            sock.close()
-            self.__has_https = True
+            sock.shutdown(socket.SHUT_RDWR)
             return True
         except Exception:
-            self.__has_https = False
             return False
+        finally:
+            sock.close()

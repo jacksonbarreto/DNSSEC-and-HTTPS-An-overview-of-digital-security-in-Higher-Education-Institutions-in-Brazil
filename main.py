@@ -1,5 +1,5 @@
 from dnssec.DNSSecValidator import DNSSecValidator
-from httpsec.HostCertificate import HostCertificate
+from httpsec.HTTPSInspector import HTTPSInspector
 import pandas as pd
 
 if __name__ == '__main__':
@@ -53,7 +53,7 @@ if __name__ == '__main__':
             row_dnssec_is_valid = dns_sec_info['dnssec_is_valid']
             row_algorithm_name = dns_sec_info['algorithm_name']
 
-            hostCertificate = HostCertificate(row.url)
+            hostCertificate = HTTPSInspector(row.url)
             hostCertificate.validator()
             host_info = hostCertificate.get_host_certificate_information()
 
