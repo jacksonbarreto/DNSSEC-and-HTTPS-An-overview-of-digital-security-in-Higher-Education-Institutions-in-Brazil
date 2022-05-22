@@ -10,6 +10,7 @@ from tldextract import extract
 
 
 class HTTPSInspector:
+
     def __init__(self, host):
         self.__host_ip_address = None
         self.__sock_ssl = None
@@ -31,7 +32,7 @@ class HTTPSInspector:
         self.__normalize_domain__(host)
         self.__location = None
 
-    def validator(self):
+    def inspect(self):
         if self.__has_https__():
             self.__has_https = True
             if self.__has_forced_redirect_from_http_to_https__():
@@ -43,10 +44,8 @@ class HTTPSInspector:
             else:
                 self.__forced_redirect_to_https = False
 
-            self.__get_certificate__()
             self.__define_certificate_information__()
             self.__verify_errors_in_certificate__()
-            self.__has_forced_redirect_from_http_to_https__()
         else:
             self.__has_https = False
 
@@ -77,7 +76,7 @@ class HTTPSInspector:
             else:
                 return False
         else:
-            raise Exception('the hostname is null')
+            raise Exception('HTTPSInspectorError(__has_forced_redirect_from_http_to_https__): the hostname is null')
 
     def __is_forced_redirect_to_same_domain__(self, location):
         if self.__location is not None:
@@ -90,7 +89,7 @@ class HTTPSInspector:
             else:
                 return False
         else:
-            raise Exception('the location is null')
+            raise Exception('HTTPSInspectorError(__is_forced_redirect_to_same_domain__): the location is null')
 
     def __normalize_domain__(self, url_draw):
         if urlparse(url_draw).hostname is not None:
@@ -99,6 +98,7 @@ class HTTPSInspector:
             self.__url_hostname = urlparse(url_draw).path
 
     def __define_certificate_information__(self):
+        self.__get_certificate__()
         if self.__crypto_certificate is not None:
             self.__protocol_version_name = self.__sock_ssl.get_protocol_version_name()
             self.__certificate_version = self.__crypto_certificate.version.name
@@ -109,9 +109,9 @@ class HTTPSInspector:
             self.__certificate_expiration = self.__crypto_certificate.not_valid_after
             self.__start_certificate_validate = self.__crypto_certificate.not_valid_before
             if self.__certificate.has_expired():
-                self.__errors.append('certificate_has_expired')
+                self.__errors.append(ExceptionCertificate.CERTIFICATE_EXPIRED)
         else:
-            raise Exception('the crypto certificate is null')
+            raise Exception('HTTPSInspectorError(__define_certificate_information__):the crypto certificate is null')
 
     def __get_issuer__(self):
         if self.__crypto_certificate is not None:
@@ -119,9 +119,9 @@ class HTTPSInspector:
                 self.__issuer = self.__crypto_certificate.issuer.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
             except Exception:
                 self.__issuer = None
-                self.__errors.append('no_issuer')
+                self.__errors.append(ExceptionCertificate.NO_ISSUER)
         else:
-            raise Exception('the crypto certificate is null')
+            raise Exception('HTTPSInspectorError(__get_issuer__): the crypto certificate is null')
 
     def __get_subject__(self):
         if self.__crypto_certificate is not None:
@@ -130,9 +130,9 @@ class HTTPSInspector:
                 self.__error_no_subject = False
             except Exception:
                 self.__subject = None
-                self.__errors.append('no_subject')
+                self.__errors.append(ExceptionCertificate.NO_SUBJECT)
         else:
-            raise Exception('the crypto certificate is null')
+            raise Exception('HTTPSInspectorError(__get_subject__): the crypto certificate is null')
 
     def __verify_errors_in_certificate__(self):
         self.__is_valid_common_name__()
@@ -158,7 +158,7 @@ class HTTPSInspector:
     def __is_valid_common_name__(self):
         if self.__subject is not None:
             if not self.__verify_common_name__():
-                self.__errors.append('common_name_invalid')
+                self.__errors.append(ExceptionCertificate.COMMON_NAME_INVALID)
 
     def __is_valid_certificate__(self):
         if len(self.__errors) != 0:
@@ -172,7 +172,7 @@ class HTTPSInspector:
             self.__certificate = self.__sock_ssl.get_peer_certificate()
             self.__crypto_certificate = self.__certificate.to_cryptography()
         else:
-            raise Exception("don't exist a connection")
+            raise Exception("HTTPSInspectorError(__get_certificate__): don't exist a connection")
         self.__close_socket_connection__()
 
     def __connect_to_socket__(self):
@@ -188,14 +188,15 @@ class HTTPSInspector:
             self.__sock_ssl.set_tlsext_host_name(idna.encode(self.__url_hostname))
             self.__sock_ssl.do_handshake()
         else:
-            raise Exception("unable to establish a connection because the hostname is null")
+            raise Exception(
+                "HTTPSInspectorError(__connect_to_socket__): can't establish a connection because the hostname is null")
 
     def __close_socket_connection__(self):
         if self.__sock_ssl is not None:
             self.__sock_ssl.close()
             self.__sock.close()
         else:
-            raise Exception("don't exist a connection")
+            raise Exception("HTTPSInspectorError(__close_socket_connection__): don't exist a connection")
 
     def __has_https__(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -208,3 +209,13 @@ class HTTPSInspector:
             return False
         finally:
             sock.close()
+
+
+class ExceptionCertificate:
+    CERTIFICATE_EXPIRED = "CERTIFICATE_EXPIRED"
+    NO_SUBJECT = "NO_SUBJECT"
+    COMMON_NAME_INVALID = "COMMON_NAME_INVALID"
+    NO_ISSUER = "NO_ISSUER"
+
+    def __setattr__(self, *_):
+        raise Exception("Tried to change the value of a constant")

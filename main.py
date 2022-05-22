@@ -54,7 +54,7 @@ if __name__ == '__main__':
             row_algorithm_name = dns_sec_info['algorithm_name']
 
             hostCertificate = HTTPSInspector(row.url)
-            hostCertificate.validator()
+            hostCertificate.inspect()
             host_info = hostCertificate.get_host_certificate_information()
 
             has_https = host_info['has_https']

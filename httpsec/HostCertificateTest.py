@@ -8,7 +8,7 @@ class MyTestCase(unittest.TestCase):
         hosts = ['https://expired.badssl.com/']
         for host in hosts:
             host_info = HTTPSInspector(host)
-            host_info.validator()
+            host_info.inspect()
             certificate_valid = host_info.get_host_certificate_information()['certificate_valid']
             self.assertEqual(certificate_valid, False)
 
@@ -16,7 +16,7 @@ class MyTestCase(unittest.TestCase):
         hosts = ['https://wrong.host.badssl.com/', 'http://www.faflor.com.br/', 'http://esamazabaetetuba.com.br/']
         for host in hosts:
             host_info = HTTPSInspector(host)
-            host_info.validator()
+            host_info.inspect()
             certificate_valid = host_info.get_host_certificate_information()['certificate_valid']
             self.assertEqual(certificate_valid, False)
 
@@ -24,7 +24,7 @@ class MyTestCase(unittest.TestCase):
         hosts = ['https://no-subject.badssl.com/']
         for host in hosts:
             host_info = HTTPSInspector(host)
-            host_info.validator()
+            host_info.inspect()
             certificate_valid = host_info.get_host_certificate_information()['certificate_valid']
             self.assertEqual(certificate_valid, False)
 
@@ -32,7 +32,7 @@ class MyTestCase(unittest.TestCase):
         hosts = ['https://no-common-name.badssl.com/']
         for host in hosts:
             host_info = HTTPSInspector(host)
-            host_info.validator()
+            host_info.inspect()
             certificate_valid = host_info.get_host_certificate_information()['certificate_valid']
             self.assertEqual(certificate_valid, False)
 
@@ -40,7 +40,7 @@ class MyTestCase(unittest.TestCase):
         hosts = ['http://www.fva.com.br/', 'ipp.pt', 'itau.com.br', 'ind.millenniumbcp.pt']
         for host in hosts:
             host_info = HTTPSInspector(host)
-            host_info.validator()
+            host_info.inspect()
             certificate_valid = host_info.get_host_certificate_information()['certificate_valid']
             self.assertEqual(certificate_valid, True)
 
@@ -50,7 +50,7 @@ class MyTestCase(unittest.TestCase):
                  'https://ages.edu.br/']
         for host in hosts:
             host_info = HTTPSInspector(host)
-            host_info.validator()
+            host_info.inspect()
             certificate_valid = host_info.get_host_certificate_information()['certificate_valid']
             self.assertEqual(certificate_valid, True)
 
@@ -59,7 +59,7 @@ class MyTestCase(unittest.TestCase):
                  'https://www.faflor.com.br/', ]
         for host in hosts:
             host_info = HTTPSInspector(host)
-            host_info.validator()
+            host_info.inspect()
             certificate_valid = host_info.get_host_certificate_information()['forced_redirect_to_https']
             self.assertEqual(certificate_valid, False)
 
@@ -67,14 +67,14 @@ class MyTestCase(unittest.TestCase):
         hosts = ['http://www.ipvc.pt/', 'ipp.pt', 'http://www.santander.pt/', 'ind.millenniumbcp.pt']
         for host in hosts:
             host_info = HTTPSInspector(host)
-            host_info.validator()
+            host_info.inspect()
             certificate_valid = host_info.get_host_certificate_information()['forced_redirect_to_https']
             self.assertEqual(certificate_valid, True)
 
     def test_host_without_https(self):
         host = 'www.fameta.edu.br'
         host_info = HTTPSInspector(host)
-        host_info.validator()
+        host_info.inspect()
         certificate_valid = host_info.get_host_certificate_information()['has_https']
         self.assertEqual(certificate_valid, False)
 
