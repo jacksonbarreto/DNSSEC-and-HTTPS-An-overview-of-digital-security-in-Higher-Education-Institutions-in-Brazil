@@ -4,7 +4,7 @@ import pandas as pd
 
 if __name__ == '__main__':
 
-    ies = pd.read_csv('./ies_with_url.csv', encoding='latin')
+    ies = pd.read_csv('./ies_with_url_ultra_little.csv', encoding='latin')
     ies['nameserver'] = 'a'
     ies['has_dnssec'] = 'a'
     ies['dnssec_is_valid'] = 'a'
@@ -57,7 +57,7 @@ if __name__ == '__main__':
             hostCertificate.inspect()
             host_info = hostCertificate.get_host_certificate_information()
 
-            has_https = host_info['has_https']
+            row_has_https = host_info['has_https']
             row_forced_redirect_to_https = host_info['forced_redirect_to_https']
             row_https_redirect_to_same_domain = host_info['https_redirect_to_same_domain']
             row_https_protocol_version_name = host_info['protocol_version_name']
@@ -76,7 +76,7 @@ if __name__ == '__main__':
             row_dnssec_is_valid = ""
             row_algorithm_name = ""
 
-            has_https = ""
+            row_has_https = ""
             row_forced_redirect_to_https = ""
             row_https_redirect_to_same_domain = ""
             row_https_protocol_version_name = ""
@@ -93,6 +93,19 @@ if __name__ == '__main__':
         has_dnssec.append(row_has_dnssec)
         dnssec_is_valid.append(row_dnssec_is_valid)
         dnssec_algorithm_name.append(row_algorithm_name)
+
+        forced_redirect_to_https.append(row_forced_redirect_to_https)
+        https_redirect_to_same_domain.append(row_https_redirect_to_same_domain)
+        https_protocol_version_name.append(row_https_protocol_version_name)
+        certificate_valid.append(row_certificate_valid)
+        certificate_version.append(row_certificate_version)
+        issuer.append(row_issuer)
+        subject.append(row_subject)
+        https_algorithm_name.append(row_https_algorithm_name)
+        https_key_size.append(row_https_key_size)
+        https_start_certificate_validate.append(row_https_start_certificate_validate)
+        https_certificate_expiration.append(row_https_certificate_expiration)
+        has_https.append(row_has_https)
 
     ies['nameserver'] = nameserver
     ies['has_dnssec'] = has_dnssec
