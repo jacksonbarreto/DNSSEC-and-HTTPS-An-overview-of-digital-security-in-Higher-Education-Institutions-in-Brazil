@@ -29,14 +29,24 @@ class HTTPSInspector:
         self.__has_https = False
         self.__errors = []
         self.__normalize_domain__(host)
+        self.__location = None
 
     def validator(self):
         if self.__has_https__():
             self.__has_https = True
+            if self.__has_forced_redirect_from_http_to_https__():
+                self.__forced_redirect_to_https = True
+                if self.__is_forced_redirect_to_same_domain__(self.__location):
+                    self.__https_redirect_to_same_domain = True
+                else:
+                    self.__https_redirect_to_same_domain = False
+            else:
+                self.__forced_redirect_to_https = False
+
             self.__get_certificate__()
             self.__define_certificate_information__()
             self.__verify_errors_in_certificate__()
-            self.__verify_forced_redirect()
+            self.__has_forced_redirect_from_http_to_https__()
         else:
             self.__has_https = False
 
@@ -58,21 +68,29 @@ class HTTPSInspector:
             'errors': self.__errors
         }
 
-    def __verify_forced_redirect(self):
+    def __has_forced_redirect_from_http_to_https__(self):
         if self.__url_hostname is not None:
-            request = requests.get(f"http://{self.__url_hostname}", allow_redirects=False, verify=False)
-            if 300 <= request.status_code <= 308 and urlparse(request.headers['location']).scheme == 'https':
-                self.__forced_redirect_to_https = True
-                _, td_location, tsu_location = extract(request.headers['location'])
-                _, td_origin, tsu_origin = extract(str(self.__url_hostname))
-                redirect_domain = f"{td_location}.{tsu_location}"
-                origin_domain = f"{td_origin}.{tsu_origin}"
-                if redirect_domain == origin_domain:
-                    self.__https_redirect_to_same_domain = True
-                else:
-                    self.__https_redirect_to_same_domain = False
+            response = requests.head(f"http://{self.__url_hostname}", allow_redirects=False, verify=False)
+            if 300 <= response.status_code <= 308 and urlparse(response.headers['location']).scheme == 'https':
+                self.__location = response.headers['location']
+                return True
+            else:
+                return False
         else:
             raise Exception('the hostname is null')
+
+    def __is_forced_redirect_to_same_domain__(self, location):
+        if self.__location is not None:
+            _, td_location, tsu_location = extract(location)
+            _, td_origin, tsu_origin = extract(str(self.__url_hostname))
+            redirect_domain = f"{td_location}.{tsu_location}"
+            origin_domain = f"{td_origin}.{tsu_origin}"
+            if redirect_domain == origin_domain:
+                return True
+            else:
+                return False
+        else:
+            raise Exception('the location is null')
 
     def __normalize_domain__(self, url_draw):
         if urlparse(url_draw).hostname is not None:
