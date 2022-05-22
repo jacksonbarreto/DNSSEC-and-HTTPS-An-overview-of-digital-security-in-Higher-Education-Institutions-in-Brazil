@@ -33,21 +33,24 @@ class HTTPSInspector:
         self.__location = None
 
     def inspect(self):
-        if self.__has_https__():
-            self.__has_https = True
-            if self.__has_forced_redirect_from_http_to_https__():
-                self.__forced_redirect_to_https = True
-                if self.__is_forced_redirect_to_same_domain__(self.__location):
-                    self.__https_redirect_to_same_domain = True
+        try:
+            if self.__has_https__():
+                self.__has_https = True
+                if self.__has_forced_redirect_from_http_to_https__():
+                    self.__forced_redirect_to_https = True
+                    if self.__is_forced_redirect_to_same_domain__(self.__location):
+                        self.__https_redirect_to_same_domain = True
+                    else:
+                        self.__https_redirect_to_same_domain = False
                 else:
-                    self.__https_redirect_to_same_domain = False
-            else:
-                self.__forced_redirect_to_https = False
+                    self.__forced_redirect_to_https = False
 
-            self.__define_certificate_information__()
-            self.__verify_errors_in_certificate__()
-        else:
-            self.__has_https = False
+                self.__define_certificate_information__()
+                self.__verify_errors_in_certificate__()
+            else:
+                self.__has_https = False
+        except Exception as e:
+            self.__errors.append(str(e))
 
     def get_host_certificate_information(self):
         return {
@@ -136,6 +139,13 @@ class HTTPSInspector:
 
     def __verify_errors_in_certificate__(self):
         self.__is_valid_common_name__()
+        try:
+            requests.head(f'https://{self.__url_hostname}')
+        except Exception as e:
+            try:
+                self.__errors.append(e.args[0].reason.args[0].verify_message)
+            except Exception as er:
+                self.__errors.append(str(e.args[0].reason.args[0]))
         self.__is_valid_certificate__()
 
     def __verify_common_name__(self):

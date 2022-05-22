@@ -78,6 +78,14 @@ class MyTestCase(unittest.TestCase):
         certificate_valid = host_info.get_host_certificate_information()['has_https']
         self.assertEqual(certificate_valid, False)
 
+    def test_invalid_certificates(self):
+        hosts = ['https://dh1024.badssl.com/', 'https://dh512.badssl.com/', 'https://dh480.badssl.com/']
+        for host in hosts:
+            host_info = HTTPSInspector(host)
+            host_info.inspect()
+            certificate_valid = host_info.get_host_certificate_information()['certificate_valid']
+            self.assertEqual(certificate_valid, False)
+
 
 if __name__ == '__main__':
     unittest.main()
