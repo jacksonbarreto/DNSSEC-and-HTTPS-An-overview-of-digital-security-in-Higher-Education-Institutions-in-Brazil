@@ -8,6 +8,13 @@ import urllib3
 from OpenSSL import SSL
 from cryptography.x509.oid import NameOID
 from tldextract import extract
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric import dsa
+from cryptography.hazmat.primitives.asymmetric import ed448
+from cryptography.hazmat.primitives.asymmetric import ed25519
+from cryptography.hazmat.primitives.asymmetric import x448
+from cryptography.hazmat.primitives.asymmetric import x25519
 
 
 class HTTPSInspector:
@@ -32,6 +39,7 @@ class HTTPSInspector:
         self.__x_xss = None
         self.__x_content = None
         self.__x_frame = None
+        self.__public_key_type = None
         self.__errors = []
         self.__normalize_domain__(host)
         self.__location = None
@@ -74,6 +82,7 @@ class HTTPSInspector:
             'subject': self.__subject,
             'algorithm_name': self.__algorithm_name,
             'key_size':  self.__get_key_size__(),
+            'public_key_type': self.__public_key_type,
             'start_certificate_validate': self.__start_certificate_validate,
             'certificate_expiration': self.__certificate_expiration,
             'errors': self.__errors
@@ -84,6 +93,25 @@ class HTTPSInspector:
             return 0
         else:
             return self.__key_size
+
+    def __check_pubkey_type(self):
+        public_key = self.__crypto_certificate.public_key()
+        if isinstance(public_key, rsa.RSAPublicKey):
+            self.__public_key_type = rsa.RSAPublicKey.__name__
+        elif isinstance(public_key, ec.EllipticCurvePublicKey):
+            self.__public_key_type = ec.EllipticCurvePublicKey.__name__
+        elif isinstance(public_key, dsa.DSAPublicKey):
+            self.__public_key_type = dsa.DSAPublicKey.__name__
+        elif isinstance(public_key, ed448.Ed448PublicKey):
+            self.__public_key_type = ed448.Ed448PublicKey.__name__
+        elif isinstance(public_key, ed25519.Ed25519PublicKey):
+            self.__public_key_type = ed25519.Ed25519PublicKey.__name__
+        elif isinstance(public_key, x448.X448PublicKey):
+            self.__public_key_type = x448.X448PublicKey.__name__
+        elif isinstance(public_key, x25519.X25519PublicKey):
+            self.__public_key_type = x25519.X25519PublicKey.__name__
+        else:
+            self.__public_key_type = "undefined"
 
     def __check_security_headers__(self):
         if self.__url_hostname is not None:
@@ -147,6 +175,7 @@ class HTTPSInspector:
             self.__key_size = self.__crypto_certificate.public_key().key_size
             self.__certificate_expiration = self.__crypto_certificate.not_valid_after
             self.__start_certificate_validate = self.__crypto_certificate.not_valid_before
+            self.__check_pubkey_type()
             if self.__certificate.has_expired():
                 self.__errors.append(ExceptionCertificate.CERTIFICATE_EXPIRED)
         else:

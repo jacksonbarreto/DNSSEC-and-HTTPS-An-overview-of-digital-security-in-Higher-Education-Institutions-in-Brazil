@@ -104,5 +104,19 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual('', host_info['X-Content-Type-Options'])
         self.assertEqual('', host_info['X-XSS-Protection'])
 
+    def test_public_key_type_ECC(self):
+        host = 'https://ecc256.badssl.com/'
+        host_inspect = HTTPSInspector(host)
+        host_inspect.inspect()
+        host_info = host_inspect.get_host_certificate_information()
+        self.assertEqual('EllipticCurvePublicKey', host_info['public_key_type'])
+
+    def test_public_key_type_RSA(self):
+        host = 'https://www.fva.com.br/'
+        host_inspect = HTTPSInspector(host)
+        host_inspect.inspect()
+        host_info = host_inspect.get_host_certificate_information()
+        self.assertEqual('RSAPublicKey', host_info['public_key_type'])
+
 if __name__ == '__main__':
     unittest.main()

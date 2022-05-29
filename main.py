@@ -27,6 +27,7 @@ if __name__ == '__main__':
     ies['X-Frame-Options'] = 'a'
     ies['X-Content-Type-Options'] = 'a'
     ies['X-XSS-Protection'] = 'a'
+    ies['public_key_type'] = 'a'
 
     dnssec_results = []
     nameserver = []
@@ -39,6 +40,7 @@ if __name__ == '__main__':
     https_protocol_version_name = []
     certificate_valid = []
     certificate_version = []
+    public_key_type = []
     issuer = []
     subject = []
     https_algorithm_name = []
@@ -75,6 +77,7 @@ if __name__ == '__main__':
             row_issuer = host_info['issuer']
             row_subject = host_info['subject']
             row_https_algorithm_name = host_info['algorithm_name']
+            row_public_key_type = host_info['public_key_type']
             row_https_key_size = host_info['key_size']
             row_https_start_certificate_validate = host_info['start_certificate_validate']
             row_https_certificate_expiration = host_info['certificate_expiration']
@@ -97,6 +100,7 @@ if __name__ == '__main__':
             row_issuer = ""
             row_subject = ""
             row_https_algorithm_name = ""
+            row_public_key_type = ""
             row_https_key_size = ""
             row_https_start_certificate_validate = ""
             row_https_certificate_expiration = ""
@@ -118,6 +122,7 @@ if __name__ == '__main__':
         issuer.append(row_issuer)
         subject.append(row_subject)
         https_algorithm_name.append(row_https_algorithm_name)
+        public_key_type.append(row_public_key_type)
         https_key_size.append(row_https_key_size)
         https_start_certificate_validate.append(row_https_start_certificate_validate)
         https_certificate_expiration.append(row_https_certificate_expiration)
@@ -142,6 +147,7 @@ if __name__ == '__main__':
     ies['issuer'] = issuer
     ies['subject'] = subject
     ies['https_algorithm_name'] = https_algorithm_name
+    ies['public_key_type'] = public_key_type
     ies['https_key_size'] = https_key_size
     ies['https_start_certificate_validate'] = https_start_certificate_validate
     ies['https_certificate_expiration'] = https_certificate_expiration
