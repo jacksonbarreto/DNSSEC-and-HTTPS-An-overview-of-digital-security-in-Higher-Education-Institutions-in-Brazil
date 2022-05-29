@@ -3,6 +3,7 @@ from urllib.parse import urlparse
 import idna
 import socket
 import requests
+import urllib3
 
 from OpenSSL import SSL
 from cryptography.x509.oid import NameOID
@@ -28,11 +29,15 @@ class HTTPSInspector:
         self.__certificate_expiration = None
         self.__key_size = None
         self.__has_https = False
+        self.__x_xss = None
+        self.__x_content = None
+        self.__x_frame = None
         self.__errors = []
         self.__normalize_domain__(host)
         self.__location = None
 
     def inspect(self):
+        urllib3.disable_warnings()
         try:
             if self.__has_https__():
                 self.__has_https = True
@@ -45,6 +50,7 @@ class HTTPSInspector:
                 else:
                     self.__forced_redirect_to_https = False
 
+                self.__check_security_headers__()
                 self.__define_certificate_information__()
                 self.__verify_errors_in_certificate__()
             else:
@@ -59,16 +65,46 @@ class HTTPSInspector:
             'protocol_version_name': self.__protocol_version_name,
             'forced_redirect_to_https': self.__forced_redirect_to_https,
             'https_redirect_to_same_domain': self.__https_redirect_to_same_domain,
+            'X-Frame-Options': self.__x_frame ,
+            'X-Content-Type-Options': self.__x_content,
+            'X-XSS-Protection': self.__x_xss,
             'certificate_valid': self.__is_valid_certificate,
             'certificate_version': self.__certificate_version,
             'issuer': self.__issuer,
             'subject': self.__subject,
             'algorithm_name': self.__algorithm_name,
-            'key_size': self.__key_size,
+            'key_size':  self.__get_key_size__(),
             'start_certificate_validate': self.__start_certificate_validate,
             'certificate_expiration': self.__certificate_expiration,
             'errors': self.__errors
         }
+
+    def __get_key_size__(self):
+        if self.__key_size is None:
+            return 0
+        else:
+            return self.__key_size
+
+    def __check_security_headers__(self):
+        if self.__url_hostname is not None:
+            response = requests.head(f"https://{self.__url_hostname}", allow_redirects=False, verify=False)
+            headers = response.headers
+            try:
+                self.__x_frame = headers['X-Frame-Options']
+            except:
+                self.__x_frame = ""
+
+            try:
+                self.__x_content = headers['X-Content-Type-Options']
+            except:
+                self.__x_content = ""
+
+            try:
+                self.__x_xss = headers['X-XSS-Protection']
+            except:
+                self.__x_xss = ""
+        else:
+            raise Exception('HTTPSInspectorError(__check_security_headers__): the hostname is null')
 
     def __has_forced_redirect_from_http_to_https__(self):
         if self.__url_hostname is not None:

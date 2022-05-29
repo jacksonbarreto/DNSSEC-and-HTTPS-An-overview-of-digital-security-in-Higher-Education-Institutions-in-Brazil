@@ -1,6 +1,7 @@
 from dnssec.DNSSecValidator import DNSSecValidator
-from httpsec.HTTPSInspector import HTTPSInspector
 import pandas as pd
+
+from httpsec.HTTPSInspector import HTTPSInspector
 
 if __name__ == '__main__':
 
@@ -22,6 +23,10 @@ if __name__ == '__main__':
     ies['https_key_size'] = 'a'
     ies['https_start_certificate_validate'] = 'a'
     ies['https_certificate_expiration'] = 'a'
+    ies['https_errors'] = 'a'
+    ies['X-Frame-Options'] = 'a'
+    ies['X-Content-Type-Options'] = 'a'
+    ies['X-XSS-Protection'] = 'a'
 
     dnssec_results = []
     nameserver = []
@@ -41,6 +46,10 @@ if __name__ == '__main__':
     https_start_certificate_validate = []
     https_certificate_expiration = []
     has_https = []
+    errors_https = []
+    x_frame = []
+    x_content = []
+    x_xss = []
 
     for row in ies.itertuples():
         print("analyzing record ", getattr(row, 'Index'), "/", len(ies))
@@ -69,7 +78,10 @@ if __name__ == '__main__':
             row_https_key_size = host_info['key_size']
             row_https_start_certificate_validate = host_info['start_certificate_validate']
             row_https_certificate_expiration = host_info['certificate_expiration']
-
+            row_errors_https = host_info['errors']
+            row_x_frame = host_info['X-Frame-Options']
+            row_x_content = host_info['X-Content-Type-Options']
+            row_x_xss = host_info['X-XSS-Protection']
         else:
             row_nameserver = ""
             row_has_dnssec = ""
@@ -88,6 +100,10 @@ if __name__ == '__main__':
             row_https_key_size = ""
             row_https_start_certificate_validate = ""
             row_https_certificate_expiration = ""
+            row_errors_https = ""
+            row_x_frame = ""
+            row_x_content = ""
+            row_x_xss = ""
 
         nameserver.append(row_nameserver)
         has_dnssec.append(row_has_dnssec)
@@ -106,6 +122,10 @@ if __name__ == '__main__':
         https_start_certificate_validate.append(row_https_start_certificate_validate)
         https_certificate_expiration.append(row_https_certificate_expiration)
         has_https.append(row_has_https)
+        errors_https.append(row_errors_https)
+        x_frame.append(row_x_frame)
+        x_content.append(row_x_content)
+        x_xss.append(row_x_xss)
 
     ies['nameserver'] = nameserver
     ies['has_dnssec'] = has_dnssec
@@ -113,6 +133,9 @@ if __name__ == '__main__':
     ies['algorithm_name'] = dnssec_algorithm_name
     ies['forced_redirect_to_https'] = forced_redirect_to_https
     ies['https_redirect_to_same_domain'] = https_redirect_to_same_domain
+    ies['X-Frame-Options'] = x_frame
+    ies['X-Content-Type-Options'] = x_content
+    ies['X-XSS-Protection'] = x_xss
     ies['https_protocol_version_name'] = https_protocol_version_name
     ies['https_certificate_valid'] = certificate_valid
     ies['https_certificate_version'] = certificate_version
@@ -123,5 +146,6 @@ if __name__ == '__main__':
     ies['https_start_certificate_validate'] = https_start_certificate_validate
     ies['https_certificate_expiration'] = https_certificate_expiration
     ies['has_https'] = has_https
+    ies['https_errors'] = errors_https
 
-    ies.to_csv('ies_with_sec_info.csv', encoding='utf-8', index=False)
+    ies.to_csv('ies_with_sec_info_ultra_little.csv', encoding='utf-8', index=False)

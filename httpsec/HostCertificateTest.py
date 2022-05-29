@@ -86,6 +86,23 @@ class MyTestCase(unittest.TestCase):
             certificate_valid = host_info.get_host_certificate_information()['certificate_valid']
             self.assertEqual(certificate_valid, False)
 
+    def test_host_with_security_headers(self):
+        host = 'www.utad.pt'
+        host_inspect = HTTPSInspector(host)
+        host_inspect.inspect()
+        host_info = host_inspect.get_host_certificate_information()
+        self.assertIsNot('', host_info['X-Frame-Options'])
+        self.assertIsNot('', host_info['X-Content-Type-Options'])
+        self.assertIsNot('', host_info['X-XSS-Protection'])
+
+    def test_host_without_security_headers(self):
+        host = 'www.ipvc.pt'
+        host_inspect = HTTPSInspector(host)
+        host_inspect.inspect()
+        host_info = host_inspect.get_host_certificate_information()
+        self.assertEqual('', host_info['X-Frame-Options'])
+        self.assertEqual('', host_info['X-Content-Type-Options'])
+        self.assertEqual('', host_info['X-XSS-Protection'])
 
 if __name__ == '__main__':
     unittest.main()
