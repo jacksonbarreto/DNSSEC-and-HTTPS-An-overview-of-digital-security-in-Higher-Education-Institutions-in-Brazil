@@ -19,6 +19,8 @@ from cryptography.hazmat.primitives.asymmetric import x25519
 
 class HTTPSInspector:
 
+    TIMEOUT = 5
+
     def __init__(self, host):
         self.__host_ip_address = None
         self.__sock_ssl = None
@@ -115,32 +117,40 @@ class HTTPSInspector:
 
     def __check_security_headers__(self):
         if self.__url_hostname is not None:
-            response = requests.head(f"https://{self.__url_hostname}", allow_redirects=False, verify=False)
-            headers = response.headers
             try:
-                self.__x_frame = headers['X-Frame-Options']
-            except:
-                self.__x_frame = ""
+                response = requests.head(f"https://{self.__url_hostname}", allow_redirects=False, verify=False, timeout= HTTPSInspector.TIMEOUT)
+                headers = response.headers
+                try:
+                    self.__x_frame = headers['X-Frame-Options']
+                except:
+                    self.__x_frame = ""
 
-            try:
-                self.__x_content = headers['X-Content-Type-Options']
-            except:
-                self.__x_content = ""
+                try:
+                    self.__x_content = headers['X-Content-Type-Options']
+                except:
+                    self.__x_content = ""
 
-            try:
-                self.__x_xss = headers['X-XSS-Protection']
+                try:
+                    self.__x_xss = headers['X-XSS-Protection']
+                except:
+                    self.__x_xss = ""
             except:
-                self.__x_xss = ""
+                self.__x_frame = "error in the request"
+                self.__x_content = "error in the request"
+                self.__x_xss = "error in the request"
         else:
             raise Exception('HTTPSInspectorError(__check_security_headers__): the hostname is null')
 
     def __has_forced_redirect_from_http_to_https__(self):
         if self.__url_hostname is not None:
-            response = requests.head(f"http://{self.__url_hostname}", allow_redirects=False, verify=False)
-            if 300 <= response.status_code <= 308 and urlparse(response.headers['location']).scheme == 'https':
-                self.__location = response.headers['location']
-                return True
-            else:
+            try:
+                response = requests.head(f"http://{self.__url_hostname}", allow_redirects=False, verify=False, timeout= HTTPSInspector.TIMEOUT)
+                if 300 <= response.status_code <= 308 and urlparse(response.headers['location']).scheme == 'https':
+                    self.__location = response.headers['location']
+                    return True
+                else:
+                    return False
+            except:
                 return False
         else:
             raise Exception('HTTPSInspectorError(__has_forced_redirect_from_http_to_https__): the hostname is null')
@@ -205,7 +215,7 @@ class HTTPSInspector:
     def __verify_errors_in_certificate__(self):
         self.__is_valid_common_name__()
         try:
-            requests.head(f'https://{self.__url_hostname}')
+            requests.head(f'https://{self.__url_hostname}', timeout=HTTPSInspector.TIMEOUT)
         except Exception as e:
             try:
                 self.__errors.append(e.args[0].reason.args[0].verify_message)

@@ -118,5 +118,6 @@ class MyTestCase(unittest.TestCase):
         host_info = host_inspect.get_host_certificate_information()
         self.assertEqual('RSAPublicKey', host_info['public_key_type'])
 
+
 if __name__ == '__main__':
     unittest.main()
