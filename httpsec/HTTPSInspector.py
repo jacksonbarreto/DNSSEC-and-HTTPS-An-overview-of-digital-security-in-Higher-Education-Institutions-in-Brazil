@@ -7,6 +7,8 @@ import urllib3
 
 from OpenSSL import SSL
 from cryptography.x509.oid import NameOID
+from sslyze import ServerScanRequest, ServerNetworkLocation, ServerHostnameCouldNotBeResolved, Scanner, \
+    ServerScanStatusEnum, ScanCommandAttemptStatusEnum, RobotScanResultEnum
 from tldextract import extract
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -18,7 +20,6 @@ from cryptography.hazmat.primitives.asymmetric import x25519
 
 
 class HTTPSInspector:
-
     TIMEOUT = 5
 
     def __init__(self, host):
@@ -45,6 +46,19 @@ class HTTPSInspector:
         self.__errors = []
         self.__normalize_domain__(host)
         self.__location = None
+        self.__ssl2 = None
+        self.__ssl3 = None
+        self.__tls1_0 = None
+        self.__tls1_1 = None
+        self.__tls1_2 = None
+        self.__tls1_3 = None
+        self.__is_vulnerable_to_heartblee = None
+        self.__is_vulnerable_to_ccs_injection = None
+        self.__is_vulnerable_to_client_renegotiation_dos = None
+        self.__supports_secure_renegotiation = None
+        self.__supports_tls_compression = None
+        self.__robot_attack = None
+        self.__scanner_sslyze = None
 
     def inspect(self):
         urllib3.disable_warnings()
@@ -63,30 +77,45 @@ class HTTPSInspector:
                 self.__check_security_headers__()
                 self.__define_certificate_information__()
                 self.__verify_errors_in_certificate__()
+                self.__define_supported_https_protocols__()
+                self.__verify_vulnerabilities__()
             else:
                 self.__has_https = False
         except Exception as e:
-            self.__errors.append(str(e))
+            self.__errors.append('HTTPSInspectorError(inspect): ' + str(e))
+        return self
 
-    def get_host_certificate_information(self):
+    def get_information(self):
         return {
             'has_https': self.__has_https,
             'host_ip_address': self.__host_ip_address,
             'protocol_version_name': self.__protocol_version_name,
             'forced_redirect_to_https': self.__forced_redirect_to_https,
             'https_redirect_to_same_domain': self.__https_redirect_to_same_domain,
-            'X-Frame-Options': self.__x_frame ,
+            'X-Frame-Options': self.__x_frame,
             'X-Content-Type-Options': self.__x_content,
             'X-XSS-Protection': self.__x_xss,
             'certificate_valid': self.__is_valid_certificate,
             'certificate_version': self.__certificate_version,
             'issuer': self.__issuer,
             'subject': self.__subject,
-            'algorithm_name': self.__algorithm_name,
-            'key_size':  self.__get_key_size__(),
-            'public_key_type': self.__public_key_type,
+            'certificate_algorithm_name': self.__algorithm_name,
+            'key_size': self.__get_key_size__(),
+            'certificate_public_key_type': self.__public_key_type,
             'start_certificate_validate': self.__start_certificate_validate,
             'certificate_expiration': self.__certificate_expiration,
+            'ssl2': self.__ssl2,
+            'ssl3': self.__ssl3,
+            'tls1_0': self.__tls1_0,
+            'tls1_1': self.__tls1_1,
+            'tls1_2': self.__tls1_2,
+            'tls1_3': self.__tls1_3,
+            'is_vulnerable_to_heartblee': self.__is_vulnerable_to_heartblee,
+            'is_vulnerable_to_ccs_injection': self.__is_vulnerable_to_ccs_injection,
+            'is_vulnerable_to_client_renegotiation_dos': self.__is_vulnerable_to_client_renegotiation_dos,
+            'supports_secure_renegotiation': self.__supports_secure_renegotiation,
+            'supports_tls_compression': self.__supports_tls_compression,
+            'robot_attack': self.__robot_attack,
             'errors': self.__errors
         }
 
@@ -118,7 +147,8 @@ class HTTPSInspector:
     def __check_security_headers__(self):
         if self.__url_hostname is not None:
             try:
-                response = requests.head(f"https://{self.__url_hostname}", allow_redirects=False, verify=False, timeout= HTTPSInspector.TIMEOUT)
+                response = requests.head(f"https://{self.__url_hostname}", allow_redirects=False, verify=False,
+                                         timeout=HTTPSInspector.TIMEOUT)
                 headers = response.headers
                 try:
                     self.__x_frame = headers['X-Frame-Options']
@@ -144,7 +174,8 @@ class HTTPSInspector:
     def __has_forced_redirect_from_http_to_https__(self):
         if self.__url_hostname is not None:
             try:
-                response = requests.head(f"http://{self.__url_hostname}", allow_redirects=False, verify=False, timeout= HTTPSInspector.TIMEOUT)
+                response = requests.head(f"http://{self.__url_hostname}", allow_redirects=False, verify=False,
+                                         timeout=HTTPSInspector.TIMEOUT)
                 if 300 <= response.status_code <= 308 and urlparse(response.headers['location']).scheme == 'https':
                     self.__location = response.headers['location']
                     return True
@@ -167,6 +198,7 @@ class HTTPSInspector:
                 return False
         else:
             raise Exception('HTTPSInspectorError(__is_forced_redirect_to_same_domain__): the location is null')
+
 
     def __normalize_domain__(self, url_draw):
         if urlparse(url_draw).hostname is not None:
@@ -197,7 +229,7 @@ class HTTPSInspector:
                 self.__issuer = self.__crypto_certificate.issuer.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
             except Exception:
                 self.__issuer = None
-                self.__errors.append(ExceptionCertificate.NO_ISSUER)
+                self.__errors.append('HTTPSInspectorError(get_issuer): ' + ExceptionCertificate.NO_ISSUER)
         else:
             raise Exception('HTTPSInspectorError(__get_issuer__): the crypto certificate is null')
 
@@ -208,7 +240,7 @@ class HTTPSInspector:
                 self.__error_no_subject = False
             except Exception:
                 self.__subject = None
-                self.__errors.append(ExceptionCertificate.NO_SUBJECT)
+                self.__errors.append('HTTPSInspectorError(get_subject): ' + ExceptionCertificate.NO_SUBJECT)
         else:
             raise Exception('HTTPSInspectorError(__get_subject__): the crypto certificate is null')
 
@@ -217,10 +249,11 @@ class HTTPSInspector:
         try:
             requests.head(f'https://{self.__url_hostname}', timeout=HTTPSInspector.TIMEOUT)
         except Exception as e:
-            try:
+            if hasattr(e.args[0].reason.args[0], 'verify_message'):
                 self.__errors.append(e.args[0].reason.args[0].verify_message)
-            except Exception as er:
+            else:
                 self.__errors.append(str(e.args[0].reason.args[0]))
+
         self.__is_valid_certificate__()
 
     def __verify_common_name__(self):
@@ -266,7 +299,7 @@ class HTTPSInspector:
             self.__sock.connect((self.__url_hostname, 443))
             ctx = SSL.Context(SSL.SSLv23_METHOD)
             ctx.check_hostname = False
-            self.__host_ip_address = self.__sock.getpeername()
+            self.__host_ip_address = self.__sock.getpeername()[0]
             ctx.verify_mode = SSL.VERIFY_NONE
             self.__sock_ssl = SSL.Connection(ctx, self.__sock)
             self.__sock_ssl.set_connect_state()
@@ -294,6 +327,119 @@ class HTTPSInspector:
             return False
         finally:
             sock.close()
+
+
+    def __define_supported_https_protocols__(self):
+        protocols = self.__check_supported_https_protocols__()
+
+        for protocol in protocols:
+            match protocol['protocol']:
+                case 'SSLv2':
+                    self.__ssl2 = protocol['supported']
+                case 'SSLv3':
+                    self.__ssl3 = protocol['supported']
+                case 'TLSv10':
+                    self.__tls1_0 = protocol['supported']
+                case 'TLSv11':
+                    self.__tls1_1 = protocol['supported']
+                case 'TLSv12':
+                    self.__tls1_2 = protocol['supported']
+                case 'TLSv13':
+                    self.__tls1_3 = protocol['supported']
+
+    def __check_supported_https_protocols__(self):
+        protocols = [{"protocol": 'SSLv2', "supported": False},
+                     {"protocol": 'SSLv3', "supported": False},
+                     {"protocol": 'TLSv10', "supported": False},
+                     {"protocol": 'TLSv11', "supported": False},
+                     {"protocol": 'TLSv12', "supported": False},
+                     {"protocol": 'TLSv13', "supported": False}]
+        # First create the scan requests for each server that we want to scan
+        try:
+            all_scan_requests = [
+                ServerScanRequest(server_location=ServerNetworkLocation(hostname=str(self.__url_hostname))),
+            ]
+        except ServerHostnameCouldNotBeResolved:
+            # Handle bad input ie. invalid hostnames
+            self.__errors.append("HTTPSInspectorError(check_supported_https_protocols): Error resolving the supplied hostnames")
+            return
+
+        # Then queue all the scans
+        scanner = Scanner()
+        scanner.queue_scans(all_scan_requests)
+        # And retrieve and process the results for each server
+        all_server_scan_results = []
+        for server_scan_result in scanner.get_results():
+            all_server_scan_results.append(server_scan_result)
+            # Were we able to connect to the server and run the scan?
+            if server_scan_result.scan_status == ServerScanStatusEnum.ERROR_NO_CONNECTIVITY:
+                # No we weren't
+                self.__errors.append("HTTPSInspectorError(check_supported_https_protocols): Could not connect")
+                continue
+
+            # Since we were able to run the scan, scan_result is populated
+            assert server_scan_result.scan_result
+            attempt = None
+            for protocol in protocols:
+                match protocol['protocol']:
+                    case 'SSLv2':
+                        attempt = server_scan_result.scan_result.ssl_2_0_cipher_suites
+                    case 'SSLv3':
+                        attempt = server_scan_result.scan_result.ssl_3_0_cipher_suites
+                    case 'TLSv10':
+                        attempt = server_scan_result.scan_result.tls_1_0_cipher_suites
+                    case 'TLSv11':
+                        attempt = server_scan_result.scan_result.tls_1_1_cipher_suites
+                    case 'TLSv12':
+                        attempt = server_scan_result.scan_result.tls_1_2_cipher_suites
+                    case 'TLSv13':
+                        attempt = server_scan_result.scan_result.tls_1_3_cipher_suites
+                if attempt is None:
+                    return protocols
+                if attempt.status == ScanCommandAttemptStatusEnum.ERROR:
+                    self.__errors.append('HTTPSInspectorError(check_supported_https_protocols): ' + attempt.error_reason)
+                elif attempt.status == ScanCommandAttemptStatusEnum.COMPLETED:
+                    attempt_result = attempt.result
+                    assert attempt_result
+                    if len(attempt_result.accepted_cipher_suites) > 0:
+                        protocol['supported'] = True
+
+            return protocols
+
+    def __verify_vulnerabilities__(self):
+        # First create the scan requests for each server that we want to scan
+        try:
+            all_scan_requests = [
+                ServerScanRequest(server_location=ServerNetworkLocation(hostname=str(self.__url_hostname))),
+            ]
+        except ServerHostnameCouldNotBeResolved:
+            # Handle bad input ie. invalid hostnames
+            self.__errors.append("HTTPSInspectorError(verify_vulnerabilities): Error resolving the supplied hostnames")
+            return
+
+        # Then queue all the scans
+        scanner = Scanner()
+        scanner.queue_scans(all_scan_requests)
+        all_server_scan_results = []
+        for server_scan_result in scanner.get_results():
+            all_server_scan_results.append(server_scan_result)
+            # Were we able to connect to the server and run the scan?
+            if server_scan_result.scan_status == ServerScanStatusEnum.ERROR_NO_CONNECTIVITY:
+                # No we weren't
+                self.__errors.append("HTTPSInspectorError(verify_vulnerabilities): Could not connect")
+                continue
+
+            # Since we were able to run the scan, scan_result is populated
+            assert server_scan_result.scan_result
+
+            self.__is_vulnerable_to_heartblee = server_scan_result.scan_result.heartbleed.result.is_vulnerable_to_heartbleed
+            self.__is_vulnerable_to_ccs_injection = server_scan_result.scan_result.openssl_ccs_injection.result.is_vulnerable_to_ccs_injection
+            self.__is_vulnerable_to_client_renegotiation_dos = server_scan_result.scan_result.session_renegotiation.result.is_vulnerable_to_client_renegotiation_dos
+            self.__supports_secure_renegotiation = server_scan_result.scan_result.session_renegotiation.result.supports_secure_renegotiation
+            self.__supports_tls_compression = server_scan_result.scan_result.tls_compression.result.supports_compression
+            robot_result_scanner = server_scan_result.scan_result.robot.result
+            if hasattr(robot_result_scanner, 'robot_result'):
+                self.__robot_attack = robot_result_scanner.robot_result.value
 
 
 class ExceptionCertificate:
