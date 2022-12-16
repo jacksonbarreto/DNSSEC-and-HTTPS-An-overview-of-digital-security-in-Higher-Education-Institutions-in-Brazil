@@ -20,7 +20,8 @@ from cryptography.hazmat.primitives.asymmetric import x25519
 
 
 class HTTPSInspector:
-    TIMEOUT = 5
+    TIMEOUT_LIMIT = 5
+    DEFAULT_HTTP_PORT = 443
 
     def __init__(self, host):
         self.__host_ip_address = None
@@ -62,27 +63,25 @@ class HTTPSInspector:
 
     def inspect(self):
         urllib3.disable_warnings()
-        try:
-            if self.__has_https__():
-                self.__has_https = True
-                if self.__has_forced_redirect_from_http_to_https__():
-                    self.__forced_redirect_to_https = True
-                    if self.__is_forced_redirect_to_same_domain__(self.__location):
-                        self.__https_redirect_to_same_domain = True
-                    else:
-                        self.__https_redirect_to_same_domain = False
-                else:
-                    self.__forced_redirect_to_https = False
 
-                self.__check_security_headers__()
-                self.__define_certificate_information__()
-                self.__verify_errors_in_certificate__()
-                self.__define_supported_https_protocols__()
-                self.__verify_vulnerabilities__()
+        if self.__has_https__():
+            self.__has_https = True
+            if self.__has_forced_redirect_from_http_to_https__():
+                self.__forced_redirect_to_https = True
+                if self.__is_forced_redirect_to_same_domain__(self.__location):
+                    self.__https_redirect_to_same_domain = True
+                else:
+                    self.__https_redirect_to_same_domain = False
             else:
-                self.__has_https = False
-        except Exception as e:
-            self.__errors.append('HTTPSInspectorError(inspect): ' + str(e))
+                self.__forced_redirect_to_https = False
+
+            self.__check_security_headers__()
+            self.__define_certificate_information__()
+            self.__verify_errors_in_certificate__()
+            self.__define_supported_https_protocols__()
+            self.__verify_vulnerabilities__()
+        else:
+            self.__has_https = False
         return self
 
     def get_information(self):
@@ -148,7 +147,7 @@ class HTTPSInspector:
         if self.__url_hostname is not None:
             try:
                 response = requests.head(f"https://{self.__url_hostname}", allow_redirects=False, verify=False,
-                                         timeout=HTTPSInspector.TIMEOUT)
+                                         timeout=HTTPSInspector.TIMEOUT_LIMIT)
                 headers = response.headers
                 try:
                     self.__x_frame = headers['X-Frame-Options']
@@ -175,7 +174,7 @@ class HTTPSInspector:
         if self.__url_hostname is not None:
             try:
                 response = requests.head(f"http://{self.__url_hostname}", allow_redirects=False, verify=False,
-                                         timeout=HTTPSInspector.TIMEOUT)
+                                         timeout=HTTPSInspector.TIMEOUT_LIMIT)
                 if 300 <= response.status_code <= 308 and urlparse(response.headers['location']).scheme == 'https':
                     self.__location = response.headers['location']
                     return True
@@ -247,7 +246,7 @@ class HTTPSInspector:
     def __verify_errors_in_certificate__(self):
         self.__is_valid_common_name__()
         try:
-            requests.head(f'https://{self.__url_hostname}', timeout=HTTPSInspector.TIMEOUT)
+            requests.head(f'https://{self.__url_hostname}', timeout=HTTPSInspector.TIMEOUT_LIMIT)
         except Exception as e:
             if hasattr(e.args[0].reason.args[0], 'verify_message'):
                 self.__errors.append(e.args[0].reason.args[0].verify_message)
@@ -296,7 +295,7 @@ class HTTPSInspector:
     def __connect_to_socket__(self):
         if self.__url_hostname is not None:
             self.__sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.__sock.connect((self.__url_hostname, 443))
+            self.__sock.connect((self.__url_hostname, HTTPSInspector.DEFAULT_HTTP_PORT))
             ctx = SSL.Context(SSL.SSLv23_METHOD)
             ctx.check_hostname = False
             self.__host_ip_address = self.__sock.getpeername()[0]
@@ -318,13 +317,15 @@ class HTTPSInspector:
 
     def __has_https__(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(3)
+        sock.settimeout(HTTPSInspector.TIMEOUT_LIMIT)
         try:
-            sock.connect((self.__url_hostname, 443))
+            sock.connect((self.__url_hostname, HTTPSInspector.DEFAULT_HTTP_PORT))
             sock.shutdown(socket.SHUT_RDWR)
             return True
-        except Exception:
+        except ConnectionRefusedError:
             return False
+        except Exception as e:
+            raise e
         finally:
             sock.close()
 
