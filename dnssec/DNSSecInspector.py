@@ -2,7 +2,7 @@ import dns.resolver
 from tldextract import extract
 
 
-class DNSSecValidator:
+class DNSSecInspector:
     def __init__(self, uri):
         self.__domain = None
         self.__get_domain__(uri)
@@ -14,13 +14,14 @@ class DNSSecValidator:
         self.__dnssec_is_valid = False
         self.__resolver = None
 
-    def validator(self):
+    def inspect(self):
         self.__get_ns()
         if self.__has_dnssec__():
             self.__has_dnssec = True
             if self.__dnssec_is_valid__():
                 self.__dnssec_is_valid = True
                 self.__set_algorithm_name__()
+        return self
 
     def __get_domain__(self, domain_name_raw):
         _, td_location, tsu_location = extract(domain_name_raw)
@@ -55,11 +56,11 @@ class DNSSecValidator:
 
     def get_information(self):
         return {
-            "domain": self.__domain,
-            "nameserver": self.__nameserver,
+            "dnssec_domain": self.__domain,
+            "dnssec_nameserver": self.__nameserver,
             "has_dnssec": self.__has_dnssec,
             "dnssec_is_valid": self.__dnssec_is_valid,
-            "algorithm_name": self.__algorithm_name
+            "dnssec_algorithm": self.__algorithm_name
         }
 
     def __has_dnssec__(self):
