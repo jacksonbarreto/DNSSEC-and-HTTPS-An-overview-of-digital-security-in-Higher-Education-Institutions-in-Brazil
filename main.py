@@ -1,157 +1,89 @@
-from dnssec.DNSSecValidator import DNSSecValidator
 import pandas as pd
 
+from dnssec.DNSSecInspector import DNSSecInspector
 from httpsec.HTTPSInspector import HTTPSInspector
 
+
+def get_keys(dictionary):
+    return list(dictionary.keys())
+
+
+def create_empty_dataframe(columns):
+    dataframe = pd.DataFrame(columns=columns)
+    return dataframe
+
+
+def join_dataframes(dataframe1, dataframe2):
+    for column in dataframe2.columns:
+        dataframe1[column] = dataframe2[column]
+
+
+def add_row_to_dataframe(dataframe, new_row):
+    dataframe.loc[len(dataframe)] = new_row
+    return dataframe
+
+
+def add_empty_row(dataframe):
+    dataframe.loc[len(dataframe)] = [''] * len(dataframe.columns)
+    return dataframe
+
+
+def create_error_dataframe(columns):
+    dataframe = pd.DataFrame(columns=columns)
+    dataframe['error'] = ''
+    return dataframe
+
+
+def add_error_row_to_error_dataframe(dataframe, error_row, error_message):
+    error_row = list(error_row)[1:]
+    error_row.append(error_message)
+    dataframe.loc[len(dataframe)] = error_row
+    return dataframe
+
+
+def prepare_main_dataframe(main_dataframe, columns):
+    for column in columns:
+        for col in column:
+            main_dataframe[col] = ''
+
+
 if __name__ == '__main__':
+    file_name = 'city_councils'
+    encoding = 'utf-8'
 
-    ies = pd.read_csv('./ies_with_url_ultra_little.csv', encoding='latin')
-    ies['nameserver'] = 'a'
-    ies['has_dnssec'] = 'a'
-    ies['dnssec_is_valid'] = 'a'
-    ies['algorithm_name'] = 'a'
-    ies['has_https'] = 'a'
+    host_default = 'www.google.com'
+    keys_https = get_keys(HTTPSInspector(host_default).inspect().get_information())
+    keys_dnssec = get_keys(DNSSecInspector(host_default).inspect().get_information())
 
-    ies['forced_redirect_to_https'] = 'a'
-    ies['https_redirect_to_same_domain'] = 'a'
-    ies['https_protocol_version_name'] = 'a'
-    ies['https_certificate_valid'] = 'a'
-    ies['https_certificate_version'] = 'a'
-    ies['issuer'] = 'a'
-    ies['subject'] = 'a'
-    ies['https_algorithm_name'] = 'a'
-    ies['https_key_size'] = 'a'
-    ies['https_start_certificate_validate'] = 'a'
-    ies['https_certificate_expiration'] = 'a'
-    ies['https_errors'] = 'a'
-    ies['X-Frame-Options'] = 'a'
-    ies['X-Content-Type-Options'] = 'a'
-    ies['X-XSS-Protection'] = 'a'
-    ies['public_key_type'] = 'a'
+    source_file_name = './' + file_name + '.csv'
 
-    dnssec_results = []
-    nameserver = []
-    has_dnssec = []
-    dnssec_is_valid = []
-    dnssec_algorithm_name = []
+    hei = pd.read_csv(filepath_or_buffer=source_file_name, encoding=encoding, engine='python')
+    errors_dataframe = create_error_dataframe(hei.columns)
 
-    forced_redirect_to_https = []
-    https_redirect_to_same_domain = []
-    https_protocol_version_name = []
-    certificate_valid = []
-    certificate_version = []
-    public_key_type = []
-    issuer = []
-    subject = []
-    https_algorithm_name = []
-    https_key_size = []
-    https_start_certificate_validate = []
-    https_certificate_expiration = []
-    has_https = []
-    errors_https = []
-    x_frame = []
-    x_content = []
-    x_xss = []
+    hei_size = len(hei)
+    https_dataframe = create_empty_dataframe(keys_https)
+    dnssec_dataframe = create_empty_dataframe(keys_dnssec)
 
-    for row in ies.itertuples():
-        print("analyzing record ", getattr(row, 'Index'), "/", len(ies))
-        if len(str(row.url)) > 3:
-            dns_sec = DNSSecValidator(row.url)
-            dns_sec.validator()
-            dns_sec_info = dns_sec.get_information()
-            row_nameserver = dns_sec_info['nameserver']
-            row_has_dnssec = dns_sec_info['has_dnssec']
-            row_dnssec_is_valid = dns_sec_info['dnssec_is_valid']
-            row_algorithm_name = dns_sec_info['algorithm_name']
+    for row in hei.itertuples():
+        print("analyzing record ", getattr(row, 'Index') + 1, "/", hei_size)
+        try:
+            https_info = HTTPSInspector(row.url).inspect().get_information()
+            print(https_info)
+            dnssec_info = DNSSecInspector(row.url).inspect().get_information()
+            add_row_to_dataframe(https_dataframe, https_info)
+            add_row_to_dataframe(dnssec_dataframe, dnssec_info)
 
-            hostCertificate = HTTPSInspector(row.url)
-            hostCertificate.inspect()
-            host_info = hostCertificate.get_host_certificate_information()
+        except Exception as e:
+            add_error_row_to_error_dataframe(errors_dataframe, row, str(e))
+            add_empty_row(https_dataframe)
+            add_empty_row(dnssec_dataframe)
+            print(e)
+            pass
 
-            row_has_https = host_info['has_https']
-            row_forced_redirect_to_https = host_info['forced_redirect_to_https']
-            row_https_redirect_to_same_domain = host_info['https_redirect_to_same_domain']
-            row_https_protocol_version_name = host_info['protocol_version_name']
-            row_certificate_valid = host_info['certificate_valid']
-            row_certificate_version = host_info['certificate_version']
-            row_issuer = host_info['issuer']
-            row_subject = host_info['subject']
-            row_https_algorithm_name = host_info['algorithm_name']
-            row_public_key_type = host_info['public_key_type']
-            row_https_key_size = host_info['key_size']
-            row_https_start_certificate_validate = host_info['start_certificate_validate']
-            row_https_certificate_expiration = host_info['certificate_expiration']
-            row_errors_https = host_info['errors']
-            row_x_frame = host_info['X-Frame-Options']
-            row_x_content = host_info['X-Content-Type-Options']
-            row_x_xss = host_info['X-XSS-Protection']
-        else:
-            row_nameserver = ""
-            row_has_dnssec = ""
-            row_dnssec_is_valid = ""
-            row_algorithm_name = ""
-
-            row_has_https = ""
-            row_forced_redirect_to_https = ""
-            row_https_redirect_to_same_domain = ""
-            row_https_protocol_version_name = ""
-            row_certificate_valid = ""
-            row_certificate_version = ""
-            row_issuer = ""
-            row_subject = ""
-            row_https_algorithm_name = ""
-            row_public_key_type = ""
-            row_https_key_size = ""
-            row_https_start_certificate_validate = ""
-            row_https_certificate_expiration = ""
-            row_errors_https = ""
-            row_x_frame = ""
-            row_x_content = ""
-            row_x_xss = ""
-
-        nameserver.append(row_nameserver)
-        has_dnssec.append(row_has_dnssec)
-        dnssec_is_valid.append(row_dnssec_is_valid)
-        dnssec_algorithm_name.append(row_algorithm_name)
-
-        forced_redirect_to_https.append(row_forced_redirect_to_https)
-        https_redirect_to_same_domain.append(row_https_redirect_to_same_domain)
-        https_protocol_version_name.append(row_https_protocol_version_name)
-        certificate_valid.append(row_certificate_valid)
-        certificate_version.append(row_certificate_version)
-        issuer.append(row_issuer)
-        subject.append(row_subject)
-        https_algorithm_name.append(row_https_algorithm_name)
-        public_key_type.append(row_public_key_type)
-        https_key_size.append(row_https_key_size)
-        https_start_certificate_validate.append(row_https_start_certificate_validate)
-        https_certificate_expiration.append(row_https_certificate_expiration)
-        has_https.append(row_has_https)
-        errors_https.append(row_errors_https)
-        x_frame.append(row_x_frame)
-        x_content.append(row_x_content)
-        x_xss.append(row_x_xss)
-
-    ies['nameserver'] = nameserver
-    ies['has_dnssec'] = has_dnssec
-    ies['dnssec_is_valid'] = dnssec_is_valid
-    ies['algorithm_name'] = dnssec_algorithm_name
-    ies['forced_redirect_to_https'] = forced_redirect_to_https
-    ies['https_redirect_to_same_domain'] = https_redirect_to_same_domain
-    ies['X-Frame-Options'] = x_frame
-    ies['X-Content-Type-Options'] = x_content
-    ies['X-XSS-Protection'] = x_xss
-    ies['https_protocol_version_name'] = https_protocol_version_name
-    ies['https_certificate_valid'] = certificate_valid
-    ies['https_certificate_version'] = certificate_version
-    ies['issuer'] = issuer
-    ies['subject'] = subject
-    ies['https_algorithm_name'] = https_algorithm_name
-    ies['public_key_type'] = public_key_type
-    ies['https_key_size'] = https_key_size
-    ies['https_start_certificate_validate'] = https_start_certificate_validate
-    ies['https_certificate_expiration'] = https_certificate_expiration
-    ies['has_https'] = has_https
-    ies['https_errors'] = errors_https
-
-    ies.to_csv('ies_with_sec_info_ultra_little.csv', encoding='utf-8', index=False)
+    prepare_main_dataframe(hei, [keys_https, keys_dnssec])
+    join_dataframes(hei, https_dataframe)
+    destiny_file_name = file_name + '_with_sec_info.csv'
+    errors_file_name = file_name + '_with_sec_info_with_errors.csv'
+    join_dataframes(hei, dnssec_dataframe)
+    hei.to_csv(path_or_buf=destiny_file_name, encoding=encoding, index=False)
+    errors_dataframe.to_csv(path_or_buf=errors_file_name, encoding=encoding, index=False)
