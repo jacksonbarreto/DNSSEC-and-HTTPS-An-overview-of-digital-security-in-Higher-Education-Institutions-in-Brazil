@@ -1,0 +1,11 @@
+version: '3.7'
+services:
+  scanner:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    volumes:
+      - ./data:/data
+    environment:
+      PYTHONUNBUFFERED: 1
+      INPUT_FILE: "/data/city_councils.csv"

@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 
 from dnssec.DNSSecInspector import DNSSecInspector
@@ -48,14 +49,14 @@ def prepare_main_dataframe(main_dataframe, columns):
 
 
 if __name__ == '__main__':
-    file_name = 'city_councils'
+    file_name = os.environ['INPUT_FILE']
     encoding = 'utf-8'
 
     host_default = 'www.google.com'
     keys_https = get_keys(HTTPSInspector(host_default).inspect().get_information())
     keys_dnssec = get_keys(DNSSecInspector(host_default).inspect().get_information())
 
-    source_file_name = './' + file_name + '.csv'
+    source_file_name = './' + file_name
 
     hei = pd.read_csv(filepath_or_buffer=source_file_name, encoding=encoding, engine='python')
     errors_dataframe = create_error_dataframe(hei.columns)

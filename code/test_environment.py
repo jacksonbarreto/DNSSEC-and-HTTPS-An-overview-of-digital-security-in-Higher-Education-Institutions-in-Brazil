@@ -9,5 +9,6 @@ if __name__ == '__main__':
 
 
     for x in range(100):
+        print(x)
         print(HTTPSInspector(url).inspect().get_information())
         print(DNSSecInspector(url).inspect().get_information())
