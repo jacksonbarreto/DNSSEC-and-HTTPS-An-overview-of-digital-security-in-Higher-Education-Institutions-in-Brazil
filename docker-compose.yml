@@ -8,4 +8,4 @@ services:
       - ./data:/data
     environment:
       PYTHONUNBUFFERED: 1
-      INPUT_FILE: "/data/city_councils.csv"
+      INPUT_FILE: "city_councils_small.csv"
