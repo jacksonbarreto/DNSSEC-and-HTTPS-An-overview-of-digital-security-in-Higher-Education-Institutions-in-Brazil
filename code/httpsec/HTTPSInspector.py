@@ -53,7 +53,7 @@ class HTTPSInspector:
         self.__tls1_1 = None
         self.__tls1_2 = None
         self.__tls1_3 = None
-        self.__is_vulnerable_to_heartblee = None
+        self.__is_vulnerable_to_heartbleed = None
         self.__is_vulnerable_to_ccs_injection = None
         self.__is_vulnerable_to_client_renegotiation_dos = None
         self.__supports_secure_renegotiation = None
@@ -109,7 +109,7 @@ class HTTPSInspector:
             'tls1_1': self.__tls1_1,
             'tls1_2': self.__tls1_2,
             'tls1_3': self.__tls1_3,
-            'is_vulnerable_to_heartblee': self.__is_vulnerable_to_heartblee,
+            'is_vulnerable_to_heartbleed': self.__is_vulnerable_to_heartbleed,
             'is_vulnerable_to_ccs_injection': self.__is_vulnerable_to_ccs_injection,
             'is_vulnerable_to_client_renegotiation_dos': self.__is_vulnerable_to_client_renegotiation_dos,
             'supports_secure_renegotiation': self.__supports_secure_renegotiation,
@@ -145,10 +145,13 @@ class HTTPSInspector:
 
     def __check_security_headers__(self):
         if self.__url_hostname is not None:
-            try:
+            try:__url_hostname
+                # COMMENT: Why HEAD instead of GET? 
                 response = requests.head(f"https://{self.__url_hostname}", allow_redirects=False, verify=False,
                                          timeout=HTTPSInspector.TIMEOUT_LIMIT)
                 headers = response.headers
+                # COMMENT: How does requests handle header-capitalization? 
+                # Is it normalized or do we need to use .lower()/.upper()?
                 try:
                     self.__x_frame = headers['X-Frame-Options']
                 except:
@@ -163,6 +166,9 @@ class HTTPSInspector:
                     self.__x_xss = headers['X-XSS-Protection']
                 except:
                     self.__x_xss = ""
+                # COMMENT: What about other Websecurity headers (OWASP Web Sec Headers)
+                # https://owasp.org/www-project-secure-headers/#div-headers
+                # -> Content-Security-Policy, etc.
             except:
                 self.__x_frame = "error in the request"
                 self.__x_content = "error in the request"
@@ -180,7 +186,9 @@ class HTTPSInspector:
                     return True
                 else:
                     return False
+                # COMMENT: Are there sites that do not use the location header and just use <meta..>-redirects? (I don't think so, but could consider this?)
             except:
+                # COMMENT: Shouldn't this be an exception instead of "false", because in case of errors, we cannot tell.
                 return False
         else:
             raise Exception('HTTPSInspectorError(__has_forced_redirect_from_http_to_https__): the hostname is null')
@@ -200,6 +208,7 @@ class HTTPSInspector:
 
 
     def __normalize_domain__(self, url_draw):
+        # COMMENT: Why use urlparse? Doesn't tldextract provide similar and more reliable functionality?
         if urlparse(url_draw).hostname is not None:
             self.__url_hostname = urlparse(url_draw).hostname
         else:
@@ -244,7 +253,8 @@ class HTTPSInspector:
             raise Exception('HTTPSInspectorError(__get_subject__): the crypto certificate is null')
 
     def __verify_errors_in_certificate__(self):
-        self.__is_valid_common_name__()
+        # COMMENT: The return value is not used? Why is this here?
+        self.__is_valid_common_name__() 
         try:
             requests.head(f'https://{self.__url_hostname}', timeout=HTTPSInspector.TIMEOUT_LIMIT)
         except Exception as e:
@@ -256,6 +266,7 @@ class HTTPSInspector:
         self.__is_valid_certificate__()
 
     def __verify_common_name__(self):
+        # COMMENT: Checks for self.__subject is not None?
         hostname = self.__url_hostname.replace("www.", "")
         subject = self.__subject.replace("www.", "")
         if ("*." in subject and subject.count("*") == 1 and
@@ -271,6 +282,10 @@ class HTTPSInspector:
             return True
         else:
             return False
+        # COMMENT: There are some cases which are not covered:
+        # verify_common_name(url_hostname, subject)
+        # verify_common_name("www.baz.foobar.com.pl", "*.foobar.com") => None
+        # verify_common_name("foobar.com", "*.foobar.com.pl") => None
 
     def __is_valid_common_name__(self):
         if self.__subject is not None:
@@ -278,6 +293,7 @@ class HTTPSInspector:
                 self.__errors.append(ExceptionCertificate.COMMON_NAME_INVALID)
 
     def __is_valid_certificate__(self):
+        # COMMENT: Maybe explicitly check for certificate-related errors? 
         if len(self.__errors) != 0:
             self.__is_valid_certificate = False
         else:
@@ -433,7 +449,7 @@ class HTTPSInspector:
             # Since we were able to run the scan, scan_result is populated
             assert server_scan_result.scan_result
 
-            self.__is_vulnerable_to_heartblee = server_scan_result.scan_result.heartbleed.result.is_vulnerable_to_heartbleed
+            self.__is_vulnerable_to_heartbleed = server_scan_result.scan_result.heartbleed.result.is_vulnerable_to_heartbleed
             self.__is_vulnerable_to_ccs_injection = server_scan_result.scan_result.openssl_ccs_injection.result.is_vulnerable_to_ccs_injection
             self.__is_vulnerable_to_client_renegotiation_dos = server_scan_result.scan_result.session_renegotiation.result.is_vulnerable_to_client_renegotiation_dos
             self.__supports_secure_renegotiation = server_scan_result.scan_result.session_renegotiation.result.supports_secure_renegotiation

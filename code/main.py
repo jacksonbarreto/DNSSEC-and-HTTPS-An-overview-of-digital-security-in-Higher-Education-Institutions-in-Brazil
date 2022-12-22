@@ -86,11 +86,13 @@ if __name__ == '__main__':
 
     prepare_main_dataframe(hei, [keys_https, keys_dnssec])
     join_dataframes(hei, https_dataframe)
+    join_dataframes(hei, dnssec_dataframe)
+
     base_output_path = os.path.join("/", "data", "results")
     if not os.path.exists(base_output_path):
         os.mkdir(base_output_path)
     destiny_file_name = os.path.join(base_output_path, file_name + '_with_sec_info.csv')
     errors_file_name = os.path.join(base_output_path, file_name + '_with_sec_info_with_errors.csv')
-    join_dataframes(hei, dnssec_dataframe)
+
     hei.to_csv(path_or_buf=destiny_file_name, encoding=encoding, index=False)
     errors_dataframe.to_csv(path_or_buf=errors_file_name, encoding=encoding, index=False)

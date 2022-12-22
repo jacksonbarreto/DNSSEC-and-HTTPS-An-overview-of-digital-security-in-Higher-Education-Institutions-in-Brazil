@@ -23,6 +23,12 @@ class DNSSecInspector:
                 self.__set_algorithm_name__()
         return self
 
+    # COMMENT: Should we maybe add some AXFR checks? 
+    # \forall ns in domain_NSes:
+    #   query AXFR $domain @ns
+    # If AXFR data comes back, the domain's nameservers are misconfigured and can leak the whole zone. 
+    # (Some argue this is not an issue, since DNS is supposed to be public, so maybe its not that relevant?)
+
     def __get_domain__(self, domain_name_raw):
         _, td_location, tsu_location = extract(domain_name_raw)
         domain = f"{td_location}.{tsu_location}"
@@ -69,6 +75,7 @@ class DNSSecInspector:
                 self.__sec_answer = self.__get_resolver__(self.__ns_ip_address).resolve(self.__domain,
                                                                                         dns.rdatatype.DNSKEY,
                                                                                         raise_on_no_answer=False)
+                # COMMENT: Is checking the length here the same as checking for an existing rr_set? 
                 if len(self.__sec_answer) == 2:
                     return True
                 else:
