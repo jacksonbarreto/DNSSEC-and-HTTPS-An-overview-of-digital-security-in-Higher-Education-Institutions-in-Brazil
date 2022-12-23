@@ -75,13 +75,17 @@ class HTTPSInspector:
             else:
                 self.__forced_redirect_to_https = False
 
+            # COMMENT: We could for security headers even if there's no SSL/TLS being used? In theory, these headers would be MITM'able, but they at least indicate some security awareness.
             self.__check_security_headers__()
+            
             self.__define_certificate_information__()
             self.__verify_errors_in_certificate__()
             self.__define_supported_https_protocols__()
             self.__verify_vulnerabilities__()
         else:
             self.__has_https = False
+        # COMMENT: We could also have a look at the cookies:
+        # How many are being set? What flags do they have? (samesite, httponly, secure)
         return self
 
     def get_information(self):
